@@ -1,7 +1,41 @@
 import { fromEvent,interval, Observable} from 'rxjs'; 
-import { map,filter,merge,scan, flatMap, takeUntil } from 'rxjs/operators';
+import { map,filter,merge,scan, flatMap, takeUntil, subscribeOn } from 'rxjs/operators';
 
+//define constants 
+const 
+  Constants = new class {
+    readonly CanvasSize = 600; 
+  }
 
+//define classes
+class Velocity { constructor(public readonly on:boolean) {} }
+  
+//define types
+type Ball = Readonly<{
+  cx: number;
+  cy: number;
+  r: number;
+  fill: string; 
+  velocity: number;
+  object: Element; 
+}>
+
+type Paddle = Readonly<{
+  x: number;
+  y: number;
+  height: number; 
+  width: number; 
+  object: Element; 
+}>
+
+type Game = Readonly<{
+  score1: number;
+  score2: number;
+  maxScore: number;
+  paddle1: Paddle;
+  paddle2: Paddle; 
+  ball: Ball; 
+}>
 
 function pong() {
     // Inside this function you will use the classes and functions 
@@ -13,53 +47,56 @@ function pong() {
     // as well as the functionality that you implement.
     // Document your code!  
 
-    type paddleState = Readonly<{
-      x: number;
-      y: number;
-    }>
-
-    const initialState: paddleState = {x: 10, y: 200};
-
-    type gameState = Readonly<{
-      score1: number;
-      score2: number;
-      maxScore: number;
-    }>
-
-    const pongStats: gameState = { 
-      score1: 0, 
-      score2: 0, 
-      maxScore: 7
-    }, svg = document.getElementById("canvas");
-    
-    type ballState = Readonly<{
-      x: number;
-      y: number;
-      r: number;
-      fill: string; 
-      velocity: number;
-    }>
-
-    const ball: ballState = { 
-      x: 50,
-      y: 50,
-      r: 50,
-      fill: "white", 
-      velocity: 23,
-    }, currBall = document.getElementById("ball");
-
-    function movePaddle(s: paddleState, step:number): paddleState { 
-      return { ...s, y: s.y + step}
+    const initalGameState: Game = { 
+      score1: 0,
+      score2: 0,
+      maxScore: 7, 
+      paddle1: createPaddle(10, 230),
+      paddle2: createPaddle(580, 230),
+      ball: createBall()
     }
+    console.log(initalGameState.score1)
 
-    function gameView(state: paddleState): void { 
-      //update the paddle
-      const paddle = document.getElementById("paddle1");
-      paddle.setAttribute("y", state.y.toString());
-    }
+   function createBall(): Ball {
+    const canvas = document.getElementById("canvas"); 
+     return {
+       cx: 300,
+       cy: (Constants.CanvasSize / 2),
+       r: 10,
+       fill: "white",
+       velocity: 3,
+       object: document.createElementNS(canvas.namespaceURI, "circle")
+     }
+   }
+   
+   function createPaddle(xcoord: number, ycoord: number): Paddle { 
+     const canvas = document.getElementById("canvas"); 
+     return {
+     x: xcoord,
+     y: ycoord, 
+     height: 120, 
+     width: 10, 
+     object: document.createElementNS(canvas.namespaceURI, "rect")
+     }
+   }
+   
+   function setView(): void { 
+    const canvas = document.getElementById("canvas");
+     canvas.appendChild(initalGameState.paddle1.object)
+     canvas.appendChild(initalGameState.ball.object)
+   }
 
-    //observable1 -> moving left paddle triggered by the up/down arrow keys
-    fromEvent<KeyboardEvent>(document, 'keydown')
+   Object.entries({
+    x: 100, y: 70,
+    width: 120, height: 80,
+    fill: '#95B3D7',
+  }).forEach(([key,val])=>rect.setAttribute(key,String(val)))
+  svg.appendChild(rect);
+
+   setView()
+
+  //observable1 -> moving left paddle triggered by the up/down arrow keys
+  const paddleMovement = fromEvent<KeyboardEvent>(document, 'keydown')
     .pipe(
       filter(({code})=>code === 'ArrowDown' || code === 'ArrowUp'),
       filter(({repeat})=>!repeat),
@@ -70,56 +107,47 @@ function pong() {
         map(_=>d))
       ),
       map(({code})=>code==='ArrowDown'?1:-1),
-      scan(movePaddle, initialState))
-    .subscribe(gameView);
-  
-    execute();
-
+      scan(movePaddle, initalGameState.paddle1))
+  paddleMovement.subscribe(updateState);
 }
 
-function createBall(): Element{
-  const canvas = document.getElementById("canvas")!;
-  const ball = document.createElementNS(canvas.namespaceURI, "circle");
-  const boundary = canvas.getBoundingClientRect();
- 
-  // Set circle properties
-  ball.setAttribute("cx", "300");
-  ball.setAttribute("cy", String(Math.random() * 500 + 50));
-  ball.setAttribute("fill", "white");
-  ball.setAttribute("id", "ball");
-  // canvas.appendChild(dot);
-  return ball; 
-}
-  
-function execute() { 
-
-  const ball = createBall(); 
-  const canvas = document.getElementById("canvas");
-  const paddle1 = document.getElementById("paddle1");
-  const paddle2 = document.getElementById("paddle2")!;
-  
-  //time for the game 
-  const gameTime = interval(1)
-  //getting the x-y coord of the ball 
-  const ballCoord = gameTime.pipe(map(() => (({x: Number(ball.getAttribute("cx")), y: Number(ball.getAttribute("cy"))}))));
-  console.log(ballCoord);
-  
-
-
-
-
-
+/***
+ * Moves the paddle 
+ */
+function movePaddle(s: Paddle, step:number): Paddle { 
+  return { ...s, y: s.y + step}
 }
 
+/***
+ * updates the view of the game for the user
+ */
+function updateState(state: Paddle): void { 
+  //update the paddle
+  const paddle = document.getElementById("paddle1");
+  paddle.setAttribute("y", state.y.toString());
+}
 
-
+/**
+ * Main function for controlling the game
+ */
+// function execute() {
+//   const paddle1 = document.getElementById("paddle1");
+//   const paddle2 = document.getElementById("paddle2")!;
+//   const boundary = Constant.canvas.getBoundingClientRect();
   
+//   //time for the game 
+//   const gameTime = interval(1000)
+//   //getting the x-y coord of the ball 
+//   const ballCoord = gameTime.pipe(map(() => (({x: Number(ball.getAttribute("cx")), y: Number(ball.getAttribute("cy"))}))));
+//   console.log(ballCoord);
+// }
+
   // the following simply runs your pong function on window load.  Make sure to leave it in place.
-  if (typeof window != 'undefined')
-    window.onload = ()=>{
-      pong();
-    }
- 
-  
+if (typeof window != 'undefined')
+  window.onload = ()=>{
+    pong();
+  }
+
+
   
 
