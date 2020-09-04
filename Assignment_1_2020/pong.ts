@@ -1,5 +1,5 @@
 import { fromEvent,interval, Observable} from 'rxjs'; 
-import { map,filter,merge,scan, flatMap, takeUntil } from 'rxjs/operators';
+import { map,filter,merge,scan, flatMap, takeUntil, take } from 'rxjs/operators';
 
 
 
@@ -14,54 +14,58 @@ function pong() {
     // Document your code!  
     const canvas = document.getElementById("canvas");
 
-    type paddleState = Readonly<{
-      x: number;
-      y: number;
-    }>
-
     type Ball = Readonly<{
       cx: number;
       cy: number;
       r: number;
       fill: string; 
-      velocity: number;
+      xVelo: number; 
+      yVelo: number;
       object: Element; 
     }>
    
     type Paddle = Readonly<{
       x: number;
       y: number;
+      object: Element; 
     }>
    
     type Game = Readonly<{
       score1: number;
       score2: number;
       maxScore: number;
-      paddle1: Element;
-      paddle2: Element; 
-      ball: Element; 
+      paddle1: Paddle;
+      paddle2: Paddle; 
+      ball: Ball; 
+      canvas: Element; 
     }>
 
     const initalGameState: Game = { 
       score1: 0,
       score2: 0,
       maxScore: 7, 
-      paddle1: document.getElementById("paddle1"),
-      paddle2: document.getElementById("paddle2"),
-      ball: document.getElementById("paddle2")
+      paddle1: {x: 10, y: 200, object: document.getElementById("paddle1")},
+      paddle2: {x: 10, y: 200, object: document.getElementById("paddle2")},
+      ball: {cx: 300, cy: Number(String(Math.random() * 500 + 50)), r: 5, fill: "red", xVelo: 7, yVelo: 3, object: null},
+      canvas: document.getElementById("canvas")
     }
 
-    const initialState: Paddle = {x: 10, y: 200};
-  
+    execute(initalGameState);   
+
     function movePaddle(s: Paddle, step:number): Paddle { 
       return { ...s, y: s.y + step}
     }
 
-    function gameView(state: Paddle): void { 
+    function moveBall(s: Ball, x:number, y:number): Ball { 
+      return { ...s, cy: s.cy + x, cx: s.cx + x }
+    }
+
+    function updateGameView(state: Paddle): void { 
       //update the Paddle
       const paddle = document.getElementById("paddle1");
       paddle.setAttribute("y", state.y.toString());
     }
+
     //observable1 -> moving left paddle triggered by the up/down arrow keys
     const obs1 = fromEvent<KeyboardEvent>(document, 'keydown')
     .pipe(
@@ -74,33 +78,42 @@ function pong() {
         map(_=>d))
       ),
       map(({code})=>code==='ArrowDown'?1:-1),
-      scan(movePaddle, initialState))
-    obs1.subscribe(gameView);
-    execute();
-}
+      scan(movePaddle, initalGameState.paddle1));
+    obs1.subscribe(updateGameView);
+    
+    function createBall(): Element {
+      const canvas = document.getElementById("canvas");
+      var ball = document.createElementNS(canvas.namespaceURI, "circle");
+      // Set circle properties
+      ball.setAttributeNS(null, "cx", "300");
+      ball.setAttributeNS(null, "cy", String(Math.random() * 500 + 50));
+      ball.setAttribute("r", "5");
+      ball.setAttributeNS(null, "fill", "red");
+      ball.setAttributeNS(null, "id", "ball");
+      return ball; 
+    }
+    
+    function inRect(x: number, game: Game) { 
+      var canvas = game.canvas.getBoundingClientRect();
+      var size = Number(game.ball.object.getAttribute("r")) * 2 ; 
+      return (x + size < canvas.left) && (x - size >= canvas.right) 
+    }
+      
+    function execute(game: Game) { 
+      const ball = createBall(); 
+      const canvas = game.canvas;
+      canvas.appendChild(ball);
 
-function createBall(): Element {
-  const canvas = document.getElementById("canvas");
-  var ball = document.createElementNS(canvas.namespaceURI, "circle");
-  // Set circle properties
-  ball.setAttributeNS(null, "cx", "300");
-  ball.setAttributeNS(null, "cy", String(Math.random() * 500 + 50));
-  ball.setAttribute("r", "5");
-  ball.setAttributeNS(null, "fill", "red");
-  ball.setAttributeNS(null, "id", "ball");
-  return ball; 
-}
-  
-function execute() { 
-  const ball = createBall(); 
-  const canvas = document.getElementById("canvas");
-  canvas.appendChild(ball);
-  //time for the game 
-  const gameTime = interval(1)
-  //getting the x-y coord of the ball 
-  const ballCoord = gameTime.pipe(map(() => (({x: Number(ball.getAttribute("cx")), y: Number(ball.getAttribute("cy"))}))));
-  console.log(ballCoord);
-}
+      //time for the game 
+      const gameTime = interval(10).pipe(map(_ => {game}))
+      //the time runs until either player wins 
+      const mainObservable = gameTime.pipe(takeUntil(
+        gameTime.pipe(filter(_ => game.score1 == game.maxScore || game.score2 == game.maxScore)))
+        ,map(_ => ({...game}))); //returns a copy of game 
+
+      mainObservable.subscribe(((data: Game) => ball.setAttribute("cx", (Number(data.ball.xVelo) + Number(data.ball.cx)).toString())));
+      //mainObservable.subscribe(((data: Game) => gameView());
+}}
 
 
 
