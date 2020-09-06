@@ -62,7 +62,6 @@ function pong() {
     }
 
     function moveBall(s: Ball): Ball { 
-      console.log(s)
       return { ...s, cy: s.cy + s.yVelo, cx: s.cx + s.xVelo}
     }
 
@@ -112,21 +111,28 @@ function pong() {
 
       //time for the game 
       const gameTime = interval(10)
+
       //the time runs until either player wins | every tick of the timer observes the ball coordinates
       const mainObservable = gameTime.pipe(takeUntil
         (gameTime.pipe(filter(_ => game.score1 == game.maxScore || game.score2 == game.maxScore)))
-        ,map((_): Game => ({...game}))); 
+        ,map((_) => ({
+          x: parseInt(ball.getAttribute("cx")),
+          y: parseInt(ball.getAttribute("cy")),
+          r: parseInt(ball.getAttribute("r")),
+          xSpeed: parseInt(ball.getAttribute("xSpeed")),
+          ySpeed: parseInt(ball.getAttribute("ySpeed")),
+          game
+        }))); 
 
       // filter for instances where ball reaches left or right of svg
-      const boundaryCondition = mainObservable.pipe(filter(g => !inRect(g.ball.cx, game)));
+      const boundaryCondition = mainObservable.pipe(filter(({x,y,r}) => !inRect(x, game)));
       //is a stream until the ball hits a wall 
-      const finiteStream = mainObservable.pipe(takeUntil(boundaryCondition),map(({ball: b}): Ball => (moveBall(b))))
+      const finiteStream = mainObservable.pipe(takeUntil(boundaryCondition),map(({game}): Ball => (moveBall(game.ball))))
       finiteStream.subscribe(b => updateBall(b));
-      
-      finiteStream.subscribe(b => game.paddle2.object.setAttribute("y", String(b.cy) + Number(game.paddle2.object.getAttribute('y')))); 
 
+      mainObservable.subscribe(({game}) => console.log(game.paddle2))
 
-  
+      mainObservable.subscribe(({y, game}) => game.paddle2.object.setAttribute('y', String(y)));
 }
 execute(initalGameState)
 }
