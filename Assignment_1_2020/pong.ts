@@ -7,7 +7,6 @@ class MovePaddle { constructor(public vector: Vec) {}}
 class MoveBall { constructor(public vector: Vec) {}}
 class Collision { constructor(public vector: Vec) {}}
 
-
 class Vec {
   constructor(public readonly x: number = 0, public readonly y: number = 0) {}
   add = (b:Vec) => new Vec(this.x + b.x, this.y + b.y)
@@ -30,14 +29,13 @@ function pong() {
     // You will be marked on your functional programming style
     // as well as the functionality that you implement.
     // Document your code!  
-
     type Ball = Readonly<{
       cx: number;
       cy: number;
       r: number;
       fill: string; 
-      xVelo: number; 
-      yVelo: number;
+      xVelo: Vec; 
+      yVelo: Vec;
       object: Element; 
     }>
    
@@ -59,13 +57,19 @@ function pong() {
       gameOver: Boolean; 
     }>
 
+    function randomNum(): number { 
+      let num = Math.floor(Math.random() * Math.floor(2))
+      if (num !== 0)
+        return num 
+    }
+
     const initalGameState: Game = { 
       score1: 0,
       score2: 0,
       maxScore: 7, 
       paddle1: {x: 10, y: 230, height: 120, object: document.getElementById("paddle1")},
       paddle2: {x: 580, y: 230, height: 120, object: document.getElementById("paddle2")},
-      ball: {cx: 300, cy: Number(String(Math.random() * 500 + 50)), r: 5, fill: "red", xVelo: 1, yVelo: 1, object: createBall()},
+      ball: {cx: 300, cy: Number(String(Math.random() * 500 + 50)), r: 5, fill: "red", xVelo: new Vec(randomNum(),0), yVelo: new Vec(0, randomNum()), object: createBall()},
       canvas: document.getElementById("canvas"),
       gameOver: false
     }
@@ -83,7 +87,6 @@ function pong() {
     }
 
     function reduceState(s: Game, e: MovePaddle | MoveBall | Collision): Game {
-
     if (e instanceof MovePaddle) {
       return { ...s, paddle1: { 
         x: s.paddle1.x,
@@ -96,41 +99,64 @@ function pong() {
     
     if (e instanceof MoveBall) {
       return { ...s, ball: { 
-        cy: s.ball.cy + s.ball.yVelo,
-        cx: s.ball.cx + s.ball.xVelo,
+        cy: s.ball.cy - s.ball.yVelo.y,
+        cx: s.ball.cx + s.ball.xVelo.x,
         r: 5,
         fill: "red", 
-        xVelo: 1, 
-        yVelo: 1, 
+        xVelo: s.ball.xVelo, 
+        yVelo: s.ball.yVelo, 
         object: document.getElementById('ball')
         }
       } 
     }
 
-    //check for Y collisons
+    //check for collisons on Y axis
     if (!collideY(s)) {
-      return reduceState(s, new Collision(new Vec(s.ball.cx,s.ball.cy).flipY()))
+      return reduceState({ ...s, ball: { 
+        cy: s.ball.cy + s.ball.yVelo.y,
+        cx: s.ball.cx + s.ball.xVelo.x,
+        r: 5,
+        fill: "red", 
+        xVelo: s.ball.xVelo, 
+        yVelo: s.ball.yVelo, 
+        object: document.getElementById('ball')
+        }
+      },  
+      new Collision(new Vec(s.ball.xVelo.x,s.ball.yVelo.y).flipY()))
     }
     
     if (e instanceof Collision){
       return { ...s, ball: { 
-        cy: s.ball.cy,
-        cx: s.ball.cx,
+        cy: s.ball.cy + s.ball.yVelo.y,
+        cx: s.ball.cx + s.ball.yVelo.x,
         r: 5,
         fill: "red", 
-        xVelo: 1, 
-        yVelo: 1, 
+        xVelo: e.vector, 
+        yVelo: e.vector, 
         object: document.getElementById('ball')
         }
       }}
 
+      if (!collideX(s)) {
+        return reduceState({ ...s, ball: { 
+          cy: Math.random() * 500 + 50,
+          cx: 300,
+          r: 5,
+          fill: "red", 
+          xVelo: s.ball.xVelo, 
+          yVelo: s.ball.yVelo, 
+          object: document.getElementById('ball')
+          }
+        },  
+        new Collision(new Vec(s.ball.xVelo.x,s.ball.yVelo.y).flipY()))
+      }
 
     return s
     }
 
     function updateView(state: Game) { 
-      state.ball.object.setAttribute('cx', String(state.ball.xVelo + state.ball.cx));
-      state.ball.object.setAttribute('cy', String(state.ball.xVelo + state.ball.cy));
+      state.ball.object.setAttribute('cx', String(state.ball.xVelo.x + state.ball.cx));
+      state.ball.object.setAttribute('cy', String(state.ball.yVelo.y + state.ball.cy));
       state.paddle1.object.setAttribute("y", String(state.paddle1.y));
       // state.paddle2.object.setAttribute('y', String(state.ball.cy) + state.paddle2.height/2);
     }
@@ -148,7 +174,7 @@ function pong() {
     downEvent = keyObservable('keydown','ArrowDown', () => new MovePaddle(new Vec(0,10)))
 
     //observable for the ball 
-    const ballObservable = interval(10).pipe(map(_ => new MoveBall(new Vec(0.001,0.001))))
+    const ballObservable = interval(10).pipe(map(_ => new MoveBall(new Vec(0.001,-0.001))))
 
     // const ballCollision = interval(1)
 
@@ -171,10 +197,9 @@ function pong() {
 
     function collideY(s: Game) { 
       //function returns true if its in the canvas
-      let canvas = document.getElementById('canvas').getBoundingClientRect();
       let size = 10; 
       let y = s.ball.cy; 
-      return ((y + size <= 600) && (y - size >= canvas.top))
+      return ((y + size <= 600) && (y - size >= -5))
     }
 
     function initView(game: Game) { 
