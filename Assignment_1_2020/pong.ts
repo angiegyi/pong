@@ -1,8 +1,7 @@
 import { fromEvent,interval, Observable, never} from 'rxjs'; 
 import { map,filter,merge,scan, flatMap, takeUntil, take, reduce } from 'rxjs/operators';
 
-class Tick { constructor(public readonly elapsed:number) {} }
-class Move { constructor(public readonly direction:number) {} }
+class GameOver { constructor(public readonly elapsed:number, public vector: Vec) {} }
 class MovePaddle { constructor(public vector: Vec) {}}
 class MoveBall { constructor(public vector: Vec) {}}
 class Collision { constructor(public vector: Vec) {}}
@@ -86,7 +85,23 @@ function pong() {
       return ball; 
     }
 
-    function reduceState(s: Game, e: MovePaddle | MoveBall | Collision): Game {
+    function reduceState(s: Game, e: MovePaddle | MoveBall | Collision | GameOver): Game {
+
+      //paddle collision needs work
+      if (collidePaddle(s)) {
+        console.log('yeet')
+        return { ...s, ball: { 
+          cy: s.ball.cy + s.ball.yVelo.y,
+          cx: s.ball.cx + s.ball.yVelo.x,
+          r: 5,
+          fill: "red", 
+          xVelo: s.ball.xVelo.flipX(), 
+          yVelo: s.ball.yVelo, 
+          object: document.getElementById('ball')
+          }
+        }
+      }
+
 
       if (e instanceof MovePaddle) {
         return { ...s, paddle1: { 
@@ -151,10 +166,8 @@ function pong() {
           }
         }}
   
-        
-
         if (s.ball.cx > 300) {
-          if (s.ball.cy < s.paddle2.y) { 
+          if (s.ball.cy <= s.paddle2.y + s.paddle2.height) { 
             return { ...s, paddle2: { 
               x: s.paddle2.x,
               y: s.paddle2.y - 1, 
@@ -162,7 +175,7 @@ function pong() {
               object: document.getElementById('paddle2')
               }}}
     
-          if (s.ball.cy > s.paddle2.y) { 
+          else { 
             return { ...s, paddle2: { 
               x: s.paddle2.x,
               y: s.paddle2.y + 1, 
@@ -171,6 +184,12 @@ function pong() {
               }}}
         }
 
+        if (e instanceof GameOver){
+          //end the game 
+        }
+
+        
+
       return s
     }
 
@@ -178,7 +197,7 @@ function pong() {
       state.ball.object.setAttribute('cx', String(state.ball.xVelo.x + state.ball.cx));
       state.ball.object.setAttribute('cy', String(state.ball.yVelo.y + state.ball.cy));
       state.paddle1.object.setAttribute("y", String(state.paddle1.y));
-      state.paddle2.object.setAttribute('y', String(state.paddle2.y + state.paddle2.height));
+      state.paddle2.object.setAttribute('y', String(state.paddle2.y));
     }
 
     type Key = 'ArrowUp' | 'ArrowDown'
@@ -196,12 +215,6 @@ function pong() {
     //observable for the ball 
     const ballObservable = interval(10).pipe(map(_ => new MoveBall(new Vec(1,-1))))
 
-    // const ballCollision = interval(1)
-
-    // const ballCollision = interval(1).pipe(map(_ => collideY(Number(document.getElementById('ball').getAttribute('cy')))));
-    // ballCollision.subscribe(console.log)
-
-  
     //main subscription
     const gameTime = interval(10).pipe(
       merge(upEvent, downEvent, ballObservable),
@@ -209,7 +222,6 @@ function pong() {
     gameTime.subscribe(updateView);
 
     function collideX(s: Game) { 
-      let canvas = s.canvas.getBoundingClientRect();
       let size = 10; 
       let x = s.ball.cx; 
       return (x + size <= 600) && (x - size >= 0) 
@@ -226,6 +238,20 @@ function pong() {
       const ball = game.ball; 
       const canvas = game.canvas;
       canvas.appendChild(ball.object);
+    }
+
+    function collidePaddle(s: Game){
+      let x = s.ball.cx
+      let y = s.ball.cy
+      let ballSize = s.ball.r
+      let rightY = s.paddle2.y
+      let rightX = s.paddle2.x
+      let leftX = s.paddle1.x
+      let leftY = s.paddle1.y
+      let paddleHeight = s.paddle1.height
+      
+      return ((Math.abs(x + ballSize - rightX) <= 1 && y >= rightY && y <= (rightY + paddleHeight)) || 
+      (Math.abs(x - leftX) <= 1 && leftY <= y && y <= (leftY + paddleHeight))) ? true : false
     }
 
 initView(initalGameState)
