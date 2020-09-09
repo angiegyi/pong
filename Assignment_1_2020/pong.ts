@@ -80,7 +80,7 @@ function pong() {
       ball.setAttributeNS(null, "cx", "300");
       ball.setAttributeNS(null, "cy", String(Math.random() * 500 + 50));
       ball.setAttribute("r", "5");
-      ball.setAttributeNS(null, "fill", "red");
+      ball.setAttributeNS(null, "fill", "yellow");
       ball.setAttributeNS(null, "id", "ball");
       return ball; 
     }
@@ -88,6 +88,7 @@ function pong() {
     function reduceState(s: Game, e: MovePaddle | MoveBall | Collision | GameOver): Game {
 
       //paddle collision needs work
+      //only bounces off the tip of the ball??
       if (collidePaddle(s)) {
         console.log('yeet')
         return { ...s, ball: { 
