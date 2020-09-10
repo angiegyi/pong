@@ -3,26 +3,33 @@
         <style>
             @import url(style.css);
             p.highlight {
-                color: red;
+                color: rgb(0, 255, 170);
             }
             svg {
-                background-color: rgb(32, 32, 26);
+                background-color: rgb(47, 47, 47);
             }
         </style>
         
     </head>
     <body>
         <script src="./dist/pong.js"></script>
-        <h1>Pong</h1>
-        <svg id="canvas" width="600" height="600" style="background-color:black">
-            <!-- <line x1 = "10" y1 = "30" x2 = "10" y2 = "80" style="fill:rgb(255, 72, 200)"/> -->
+        <h1>Pong 🏓</h1>
+        
+        <svg id="canvas" width="600" height="600">
             #making the left paddle 
-            <rect id = "paddle1" x = "10" y = "230" width="10" height="120" style="fill:rgb(255, 72, 200)"/>
+            <rect id = "paddle1" x = "10" y = "230" width="10" height="120" style="fill:rgb(255, 116, 213)"/>
             #making the right paddle 
             <rect id = "paddle2" x = "580" y = "230" width="10" height="120" style="fill:rgb(115, 234, 255)"/>
             </g>
+            <line x1="300" y1="1" x2="300" y2="600" style="stroke:rgb(255, 255, 255);stroke-width:2" stroke-dasharray = "10 10 10"/>
+            <text id="leftS" x=150 y=200 fill="white" class="score" font-size= "90px">0</text>
+            <text id="rightS" x=450 y=200 fill="white" class="score" font-size= "90px">0</text>
         </svg>
         
+        <h2>Instructions 🌟</h2> 
+        <p>Player is the left paddle. Use the up and down arrow keys to move the paddle</p>
+        <p>First player to score 8 points wins the game!</p>
+        <p>Have Fun 🥳🥳🥳</p>
         
     </body>
 </html>

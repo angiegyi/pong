@@ -67,8 +67,8 @@ function pong() {
      * Is the object to represent the inital state of the game 
      */
     const initalGameState: Game = { 
-      score1: 1,
-      score2: 1,
+      score1: 0,
+      score2: 0,
       maxScore: 8, 
       paddle1: {x: 10, y: 230, height: 120, object: document.getElementById("paddle1")},
       paddle2: {x: 580, y: 230, height: 120, object: document.getElementById("paddle2")},
@@ -98,27 +98,36 @@ function pong() {
      */
     function reduceState(s: Game, e: MovePaddle | MoveBall): Game {
 
+      if (checkScore(s)){
+        endGame(s) 
+      }
+
       /* Responsible for moving the left paddle */
       if (e instanceof MovePaddle) {
-        if ((s.paddle1.y + s.paddle1.height <= 585) && (s.paddle1.y - s.paddle1.height >= -100)){ 
-        return { ...s, paddle1: { 
-          x: s.paddle1.x,
-          y: s.paddle1.y + e.vector.y, 
-          height: 120, 
-          object: document.getElementById('paddle1')
-          } 
+        if (e.vector.y > 0) { 
+          if ((s.paddle1.y + e.vector.y <= 475)){ 
+            return { ...s, paddle1: { 
+              x: s.paddle1.x,
+              y: s.paddle1.y + e.vector.y, 
+              height: 120, 
+              object: document.getElementById('paddle1')
+              } 
+            }
         }
+        else {return s}
       }
       else { 
-        return { ...s, paddle1: { 
-          x: s.paddle1.x,
-          y: s.paddle1.y, 
-          height: 120, 
-          object: document.getElementById('paddle1')
-          } 
+        if ((s.paddle1.y - e.vector.y >= 10)){
+          return { ...s, paddle1: { 
+            x: s.paddle1.x,
+            y: s.paddle1.y + e.vector.y, 
+            height: 120, 
+            object: document.getElementById('paddle1')
+            } 
+          }
         }
-      } 
-    }
+      else {return s} 
+      }}
 
     /* Checks if there has been a collision between the ball and paddle */
     if (collidePaddle(s)) {
@@ -165,12 +174,8 @@ function pong() {
       //collisions on the side walls
       if (!collideX(s)) { 
         //check if the game is still running, if not then run the end game function
-        if (checkScore(s)){
-          endGame(s) 
-        }
         //checks if its left side's point
         if (s.ball.cx <= 300) {
-          console.log('rights point', s.score1, s.score2, s.maxScore)
           return { 
             score1: s.score1,
             score2: s.score2 + 1, 
@@ -198,23 +203,33 @@ function pong() {
         }
      
       if (s.ball.cx > 300) {
+        //if the ball is above the ball 
         if (s.ball.cy + s.ball.r * 2 < s.paddle2.y + s.paddle2.height/2) { 
-            return { ...s, paddle2: { 
-              x: s.paddle2.x,
-              y: s.paddle2.y - 3, 
-              height: 120, 
-              object: document.getElementById('paddle2')
-              }}}
-          else { 
+          //if the paddle is within the board parameters 
+            if ((s.paddle2.y - 3 >= 10)) {
+                return { ...s, paddle2: { 
+                  x: s.paddle2.x,
+                  y: s.paddle2.y - 3, 
+                  height: 120, 
+                  object: document.getElementById('paddle2')
+                  }}}
+            else {return s}
+                }
+                
+        //if the ball is below the ball 
+        else { 
+          //if the paddle is within the board parameters 
+          if ((s.paddle2.y + 3 <= 475)) {
             return { ...s, paddle2: { 
               x: s.paddle2.x,
               y: s.paddle2.y + 3, 
               height: 120, 
               object: document.getElementById('paddle2')
               }}}
+          else {
+            return s
+          }}
         }
-        //end game 
-        
       return s
     }
 
