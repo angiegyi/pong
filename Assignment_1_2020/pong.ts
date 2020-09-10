@@ -4,7 +4,6 @@ import { map,filter,merge,scan, flatMap, takeUntil, take, reduce } from 'rxjs/op
 class GameOver { constructor(public readonly elapsed:number, public vector: Vec) {} }
 class MovePaddle { constructor(public vector: Vec) {}}
 class MoveBall { constructor(public vector: Vec) {}}
-class Collision { constructor(public vector: Vec) {}}
 
 class Vec {
   constructor(public readonly x: number = 0, public readonly y: number = 0) {}
@@ -65,7 +64,7 @@ function pong() {
     const initalGameState: Game = { 
       score1: 0,
       score2: 0,
-      maxScore: 7, 
+      maxScore: 8, 
       paddle1: {x: 10, y: 230, height: 120, object: document.getElementById("paddle1")},
       paddle2: {x: 580, y: 230, height: 120, object: document.getElementById("paddle2")},
       ball: {cx: 300, cy: Number(String(Math.random() * 500 + 50)), r: 5, fill: "red", xVelo: new Vec(randomNum(),0), yVelo: new Vec(0, randomNum()), object: createBall()},
@@ -85,51 +84,45 @@ function pong() {
       return ball; 
     }
 
-    function reduceState(s: Game, e: MovePaddle | MoveBall | Collision | GameOver): Game {
-
-      //paddle collision needs work
-      //only bounces off the tip of the ball??
-      if (collidePaddle(s)) {
-        console.log('yeet')
-        return { ...s, ball: { 
-          cy: s.ball.cy + s.ball.yVelo.y,
-          cx: s.ball.cx + s.ball.yVelo.x,
-          r: 5,
-          fill: "red", 
-          xVelo: s.ball.xVelo.flipX(), 
-          yVelo: s.ball.yVelo, 
-          object: document.getElementById('ball')
-          }
-        }
-      }
-
+    function reduceState(s: Game, e: MovePaddle | MoveBall | GameOver): Game {
 
       if (e instanceof MovePaddle) {
+        if ((s.paddle1.y + s.paddle1.height <= 585) && (s.paddle1.y - s.paddle1.height >= -100)){ 
         return { ...s, paddle1: { 
           x: s.paddle1.x,
           y: s.paddle1.y + e.vector.y, 
           height: 120, 
           object: document.getElementById('paddle1')
-        } 
+          } 
+        }
+      }
+      else { 
+        return { ...s, paddle1: { 
+          x: s.paddle1.x,
+          y: s.paddle1.y, 
+          height: 120, 
+          object: document.getElementById('paddle1')
+          } 
+        }
       } 
     }
       
-      if (e instanceof MoveBall) {
-        return { ...s, ball: { 
-          cy: s.ball.cy - s.ball.yVelo.y,
-          cx: s.ball.cx + s.ball.xVelo.x,
-          r: 5,
-          fill: "red", 
-          xVelo: s.ball.xVelo, 
-          yVelo: s.ball.yVelo, 
-          object: document.getElementById('ball')
-          }
-        } 
+    if (collidePaddle(s)) {
+      return { ...s, ball: { 
+        cy: s.ball.cy + s.ball.yVelo.y,
+        cx: s.ball.cx + s.ball.xVelo.x * -1,
+        r: 5,
+        fill: "red", 
+        xVelo: s.ball.xVelo.flipX(), 
+        yVelo: s.ball.yVelo, 
+        object: document.getElementById('ball')
+        }
       }
-  
-      //check for collisons on Y axis
-      if (!collideY(s)) {
-        return reduceState({ ...s, ball: { 
+    }
+
+
+    if (e instanceof MoveBall) {
+        return { ...s, ball: { 
           cy: s.ball.cy + s.ball.yVelo.y,
           cx: s.ball.cx + s.ball.xVelo.x,
           r: 5,
@@ -138,81 +131,109 @@ function pong() {
           yVelo: s.ball.yVelo, 
           object: document.getElementById('ball')
           }
-        },  
-        new Collision(new Vec(s.ball.xVelo.x,s.ball.yVelo.y).flipY()))
+        } 
       }
 
-      if (!collideX(s)) { 
+      //check for collisons top walls
+      if (!collideY(s)) {
         return { ...s, ball: { 
-          cy: Math.random() * 500 + 50,
-          cx: 300,
+          cy: s.ball.cy + s.ball.yVelo.y * -1,
+          cx: s.ball.cx + s.ball.xVelo.x,
           r: 5,
           fill: "red", 
-          xVelo: new Vec(randomNum(), 0), 
-          yVelo: new Vec(0, randomNum()), 
+          xVelo: s.ball.xVelo, 
+          yVelo: s.ball.yVelo.flipY(), 
           object: document.getElementById('ball')
           }
-        } 
+        }
       }
-      
-      if (e instanceof Collision){
-        return { ...s, ball: { 
-          cy: s.ball.cy + s.ball.yVelo.y,
-          cx: s.ball.cx + s.ball.yVelo.x,
-          r: 5,
-          fill: "red", 
-          xVelo: e.vector, 
-          yVelo: e.vector, 
-          object: document.getElementById('ball')
+
+      //collisions on the side walls
+      if (!collideX(s)) { 
+
+        if (checkScore(s)){
+          endGame(s) 
+        }
+
+        if (s.ball.cx <= 300) {
+          console.log('rights point', s.score1, s.score2, s.maxScore)
+          return { 
+            score1: s.score1,
+            score2: s.score2 + 1, 
+            maxScore: s.maxScore, 
+            paddle1: s.paddle1,
+            paddle2: s.paddle2,
+            ball: {cx: 300, cy: Math.random() * 500 + 50, r: 5, fill: "red", xVelo: new Vec(randomNum(),0), yVelo: new Vec(0, randomNum()), object: s.ball.object},
+            canvas: document.getElementById("canvas"),
+            gameOver: false
           }
-        }}
-  
-        if (s.ball.cx > 300) {
-          if (s.ball.cy <= s.paddle2.y + s.paddle2.height) { 
+        }
+        else {
+          console.log('rights point', s.score1, s.score2, s.maxScore)
+          return { 
+            score1: s.score1 + 1,
+            score2: s.score2,
+            maxScore: s.maxScore, 
+            paddle1: s.paddle1,
+            paddle2: s.paddle2,
+            ball: {cx: 300, cy: Math.random() * 500 + 50, r: 5, fill: "red", xVelo: new Vec(randomNum(),0), yVelo: new Vec(0, randomNum()), object: s.ball.object},
+            canvas: document.getElementById("canvas"),
+            gameOver: false
+          }
+          }
+        }
+     
+      if (s.ball.cx > 300) {
+        if (s.ball.cy + s.ball.r * 2 < s.paddle2.y + s.paddle2.height/2) { 
             return { ...s, paddle2: { 
               x: s.paddle2.x,
-              y: s.paddle2.y - 1, 
+              y: s.paddle2.y - 2, 
               height: 120, 
               object: document.getElementById('paddle2')
               }}}
-    
           else { 
             return { ...s, paddle2: { 
               x: s.paddle2.x,
-              y: s.paddle2.y + 1, 
+              y: s.paddle2.y + 2, 
               height: 120, 
               object: document.getElementById('paddle2')
               }}}
         }
-
-        if (e instanceof GameOver){
-          //end the game 
-        }
-
+        //end game 
         
-
       return s
     }
 
     function updateView(state: Game) { 
+      console.log()
       state.ball.object.setAttribute('cx', String(state.ball.xVelo.x + state.ball.cx));
       state.ball.object.setAttribute('cy', String(state.ball.yVelo.y + state.ball.cy));
       state.paddle1.object.setAttribute("y", String(state.paddle1.y));
       state.paddle2.object.setAttribute('y', String(state.paddle2.y));
+      
+      let score1 = document.getElementById("leftS")
+      let score2 = document.getElementById("rightS")
+
+      score1.innerHTML = String(state.score1)
+      score2.innerHTML = String(state.score2)
     }
 
     type Key = 'ArrowUp' | 'ArrowDown'
     type Event = 'keydown' | 'keyup'
 
-    //observables go here
     const keyObservable = <T>(e:Event, k:Key, result:()=>T)=>
-    fromEvent<KeyboardEvent>(document,e)
-        .pipe(
-          filter(({code})=>code === k),
-          map(result)),
-    upEvent = keyObservable('keydown','ArrowUp', () => new MovePaddle(new Vec(0,-10))),
-    downEvent = keyObservable('keydown','ArrowDown', () => new MovePaddle(new Vec(0,10)))
-
+    fromEvent<KeyboardEvent>(document, e)
+    .pipe(
+      filter(({code})=>code === k),
+      filter(({repeat})=>!repeat),
+      flatMap(d =>interval(10).pipe(
+        takeUntil(fromEvent<KeyboardEvent>(document, 'keyup').pipe(
+          filter(({code})=>code === d.code)
+        )),
+        map(result)))),
+    upEvent = keyObservable('keydown','ArrowUp', () => new MovePaddle(new Vec(0,-2))),
+    downEvent = keyObservable('keydown','ArrowDown', () => new MovePaddle(new Vec(0,2)))        
+    
     //observable for the ball 
     const ballObservable = interval(10).pipe(map(_ => new MoveBall(new Vec(1,-1))))
 
@@ -250,9 +271,17 @@ function pong() {
       let leftX = s.paddle1.x
       let leftY = s.paddle1.y
       let paddleHeight = s.paddle1.height
-      
+
       return ((Math.abs(x + ballSize - rightX) <= 1 && y >= rightY && y <= (rightY + paddleHeight)) || 
-      (Math.abs(x - leftX) <= 1 && leftY <= y && y <= (leftY + paddleHeight))) ? true : false
+      (Math.abs(x - leftX - ballSize) <= 5 && leftY <= y && y <= (leftY + paddleHeight))) ? true : false
+    }
+
+    function checkScore(s: Game){
+      return s.score1 == s.maxScore || s.score2 == s.maxScore
+    }
+
+    function endGame(s: Game){ 
+
     }
 
 initView(initalGameState)
@@ -263,4 +292,3 @@ initView(initalGameState)
     window.onload = ()=>{
       pong();
     }
- 
