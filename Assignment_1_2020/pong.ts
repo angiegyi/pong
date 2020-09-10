@@ -131,14 +131,30 @@ function pong() {
 
     /* Checks if there has been a collision between the ball and paddle */
     if (collidePaddle(s)) {
-      return { ...s, ball: { 
-        cy: s.ball.cy + s.ball.yVelo.y,
-        cx: s.ball.cx + s.ball.xVelo.x * -1,
-        r: 5,
-        fill: "red", 
-        xVelo: s.ball.xVelo.flipX(), 
-        yVelo: s.ball.yVelo, 
-        object: document.getElementById('ball')
+      //if ball collides with the bottom of the paddle 
+      if (s.ball.cy > s.paddle1.y + s.paddle1.height/2 || s.ball.cy > s.paddle2.y + s.paddle1.height/2){
+        return { ...s, ball: { 
+          cy: s.ball.cy + s.ball.yVelo.y,
+          cx: s.ball.cx + s.ball.xVelo.x * -1,
+          r: 5,
+          fill: "red", 
+          xVelo: s.ball.xVelo.flipX(), 
+          yVelo: new Vec(0, 2), 
+          object: document.getElementById('ball')
+          }
+        }
+      }
+      else { 
+        //if ball collides with the top of the paddle 
+        return { ...s, ball: { 
+          cy: s.ball.cy + s.ball.yVelo.y,
+          cx: s.ball.cx + s.ball.xVelo.x * -1,
+          r: 5,
+          fill: "red", 
+          xVelo: s.ball.xVelo.flipX(), 
+          yVelo: new Vec(0, -5), 
+          object: document.getElementById('ball')
+          }
         }
       }
     }
@@ -229,7 +245,7 @@ function pong() {
           else {
             return s
           }}
-        }
+        } 
       return s
     }
 
@@ -282,21 +298,16 @@ function pong() {
      * Function determines if the ball is within the boundaries of the side canvas walls 
      * @param s takes in the game state object
      */
-    function collideX(s: Game) { 
-      let size = 10; 
-      let x = s.ball.cx; 
-      return (x + size <= 600) && (x - size >= 0) 
+    function collideX(s: Game): Boolean {  
+      return (s.ball.cx + 10 <= 600) && (s.ball.cx - 10 >= 0) 
     }
 
     /**
      * Function determines if the ball is within the boundaries of the top canvas walls 
      * @param s takes in the game state object
      */
-    function collideY(s: Game) { 
-      //function returns true if its in the canvas
-      let size = 10; 
-      let y = s.ball.cy; 
-      return ((y + size <= 600) && (y - size >= -5))
+    function collideY(s: Game): Boolean { 
+      return ((s.ball.cy + 10 <= 600) && (s.ball.cy - 10 >= -5))
     }
 
     /**
@@ -304,9 +315,7 @@ function pong() {
      * @param game takes in the game state object
      */
     function initView(game: Game) { 
-      const ball = game.ball; 
-      const canvas = game.canvas;
-      canvas.appendChild(ball.object);
+      game.canvas.appendChild(game.ball.object);
     }
 
     /**
@@ -316,16 +325,17 @@ function pong() {
     function collidePaddle(s: Game){
       let cx = s.ball.cx
       let cy = s.ball.cy
-      let ballSize = s.ball.r
+      let ballSize = s.ball.r * 2
       let rightPaddleY = s.paddle2.y
       let rightPaddleX = s.paddle2.x
       let leftPaddleX = s.paddle1.x
       let leftPaddleY = s.paddle1.y
       let paddleHeight = s.paddle1.height
 
-      return ((Math.abs(cx + ballSize - rightPaddleX) <= 1 && cy >= rightPaddleY && cy <= (rightPaddleY + paddleHeight)) || 
-      (Math.abs(cx - leftPaddleX - ballSize) <= 5 && leftPaddleY <= cy && cy <= (leftPaddleY + paddleHeight))) ? true : false
+      return ((Math.abs(cx + ballSize - rightPaddleX) <= 1 && cy >= rightPaddleY - 10 && cy <= (rightPaddleY + paddleHeight + 10)) || 
+      (Math.abs(cx - leftPaddleX - ballSize) <= 1 && (leftPaddleY - 10) <= cy && cy <= (leftPaddleY + paddleHeight + 10))) ? true : false
     }
+
 
     /**
      * This function checks the score of the game 
@@ -354,8 +364,10 @@ function pong() {
       v.setAttributeNS(null, "x", "150")
       v.setAttributeNS(null, "y", "300")
       v.setAttributeNS(null, "fill", "white");
-      v.setAttributeNS(null, "font-size", "50")
+      v.setAttributeNS(null, "font-size", "50"); 
       canvas.appendChild(v)
+
+      pong()
       gameTime.unsubscribe();
     }
 
