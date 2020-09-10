@@ -7,15 +7,8 @@ class MoveBall { constructor(public vector: Vec) {}}
 
 class Vec {
   constructor(public readonly x: number = 0, public readonly y: number = 0) {}
-  add = (b:Vec) => new Vec(this.x + b.x, this.y + b.y)
-  sub = (b:Vec) => this.add(b.scale(-1))
-  len = ()=> Math.sqrt(this.x*this.x + this.y*this.y)
-  scale = (s:number) => new Vec(this.x*s,this.y*s)
-  ortho = ()=> new Vec(this.y,-this.x)
-
   flipX = () => new Vec(this.x * -1, this.y)
   flipY = () => new Vec(this.x, this.y * -1)
-
   randomX = () => new Vec(this.x * -1, this.y)
   //static Zero = new Vec();
 }
@@ -29,6 +22,10 @@ function pong() {
     // You will be marked on your functional programming style
     // as well as the functionality that you implement.
     // Document your code!  
+
+    /**
+    * a type Ball 
+    */
     type Ball = Readonly<{
       cx: number;
       cy: number;
@@ -38,14 +35,18 @@ function pong() {
       yVelo: Vec;
       object: Element; 
     }>
-   
+     /**
+    * a type Paddle 
+    */
     type Paddle = Readonly<{
       x: number;
       y: number;
       height: number;
       object: Element; 
     }>
-   
+   /**
+    * a type Game 
+    */
     type Game = Readonly<{
       score1: number;
       score2: number;
@@ -56,14 +57,18 @@ function pong() {
       canvas: Element; 
       gameOver: Boolean; 
     }>
-
+    /**
+     * Generates either a -1 or 1 
+     */
     function randomNum(): number { 
-      return Math.random() < 0.5 ? -1 : 1;
+      return Math.random() < 0.5 ? -3 : 3;
     }
-
+    /**
+     * Is the object to represent the inital state of the game 
+     */
     const initalGameState: Game = { 
-      score1: 0,
-      score2: 0,
+      score1: 1,
+      score2: 1,
       maxScore: 8, 
       paddle1: {x: 10, y: 230, height: 120, object: document.getElementById("paddle1")},
       paddle2: {x: 580, y: 230, height: 120, object: document.getElementById("paddle2")},
@@ -71,7 +76,9 @@ function pong() {
       canvas: document.getElementById("canvas"),
       gameOver: false
     }
-
+    /**
+     * Creates a svg ball element 
+     */
     function createBall(): Element {
       const canvas = document.getElementById("canvas");
       var ball = document.createElementNS(canvas.namespaceURI, "circle");
@@ -84,8 +91,14 @@ function pong() {
       return ball; 
     }
 
-    function reduceState(s: Game, e: MovePaddle | MoveBall | GameOver): Game {
+    /**
+     * Updates the state of objects based on the event that has occured
+     * @param s state of the game
+     * @param e the event that has occured, represented by a class 
+     */
+    function reduceState(s: Game, e: MovePaddle | MoveBall): Game {
 
+      /* Responsible for moving the left paddle */
       if (e instanceof MovePaddle) {
         if ((s.paddle1.y + s.paddle1.height <= 585) && (s.paddle1.y - s.paddle1.height >= -100)){ 
         return { ...s, paddle1: { 
@@ -106,7 +119,8 @@ function pong() {
         }
       } 
     }
-      
+
+    /* Checks if there has been a collision between the ball and paddle */
     if (collidePaddle(s)) {
       return { ...s, ball: { 
         cy: s.ball.cy + s.ball.yVelo.y,
@@ -120,7 +134,7 @@ function pong() {
       }
     }
 
-
+    /* Is responsible for moving the ball */
     if (e instanceof MoveBall) {
         return { ...s, ball: { 
           cy: s.ball.cy + s.ball.yVelo.y,
@@ -150,11 +164,11 @@ function pong() {
 
       //collisions on the side walls
       if (!collideX(s)) { 
-
+        //check if the game is still running, if not then run the end game function
         if (checkScore(s)){
           endGame(s) 
         }
-
+        //checks if its left side's point
         if (s.ball.cx <= 300) {
           console.log('rights point', s.score1, s.score2, s.maxScore)
           return { 
@@ -168,8 +182,8 @@ function pong() {
             gameOver: false
           }
         }
+        //otherwise it is right side's point
         else {
-          console.log('rights point', s.score1, s.score2, s.maxScore)
           return { 
             score1: s.score1 + 1,
             score2: s.score2,
@@ -187,14 +201,14 @@ function pong() {
         if (s.ball.cy + s.ball.r * 2 < s.paddle2.y + s.paddle2.height/2) { 
             return { ...s, paddle2: { 
               x: s.paddle2.x,
-              y: s.paddle2.y - 2, 
+              y: s.paddle2.y - 3, 
               height: 120, 
               object: document.getElementById('paddle2')
               }}}
           else { 
             return { ...s, paddle2: { 
               x: s.paddle2.x,
-              y: s.paddle2.y + 2, 
+              y: s.paddle2.y + 3, 
               height: 120, 
               object: document.getElementById('paddle2')
               }}}
@@ -204,16 +218,19 @@ function pong() {
       return s
     }
 
+    /**
+     *This function updates the view of the game and is called in the subscribe of the game time observable
+     */
     function updateView(state: Game) { 
-      console.log()
+      //updates the ball and paddle 
       state.ball.object.setAttribute('cx', String(state.ball.xVelo.x + state.ball.cx));
       state.ball.object.setAttribute('cy', String(state.ball.yVelo.y + state.ball.cy));
       state.paddle1.object.setAttribute("y", String(state.paddle1.y));
       state.paddle2.object.setAttribute('y', String(state.paddle2.y));
       
+      //updates the score of the game 
       let score1 = document.getElementById("leftS")
       let score2 = document.getElementById("rightS")
-
       score1.innerHTML = String(state.score1)
       score2.innerHTML = String(state.score2)
     }
@@ -221,6 +238,7 @@ function pong() {
     type Key = 'ArrowUp' | 'ArrowDown'
     type Event = 'keydown' | 'keyup'
 
+    // observable for the movement of paddle 1 using the up and down arrow keys 
     const keyObservable = <T>(e:Event, k:Key, result:()=>T)=>
     fromEvent<KeyboardEvent>(document, e)
     .pipe(
@@ -231,24 +249,34 @@ function pong() {
           filter(({code})=>code === d.code)
         )),
         map(result)))),
-    upEvent = keyObservable('keydown','ArrowUp', () => new MovePaddle(new Vec(0,-2))),
-    downEvent = keyObservable('keydown','ArrowDown', () => new MovePaddle(new Vec(0,2)))        
+
+    /*create new observables based on the key pressed which creates new move paddle 
+    objects which are used in the reduce state function*/
+    upEvent = keyObservable('keydown','ArrowUp', () => new MovePaddle(new Vec(0,-3))),
+    downEvent = keyObservable('keydown','ArrowDown', () => new MovePaddle(new Vec(0,3)))        
     
-    //observable for the ball 
+  /* this is the observable for tracking the ball */
     const ballObservable = interval(10).pipe(map(_ => new MoveBall(new Vec(1,-1))))
 
-    //main subscription
+    /* this is the main observable for the game */
     const gameTime = interval(10).pipe(
       merge(upEvent, downEvent, ballObservable),
-      scan(reduceState, initalGameState))
-    gameTime.subscribe(updateView);
+      scan(reduceState, initalGameState)).subscribe(updateView);
 
+    /**
+     * Function determines if the ball is within the boundaries of the side canvas walls 
+     * @param s takes in the game state object
+     */
     function collideX(s: Game) { 
       let size = 10; 
       let x = s.ball.cx; 
       return (x + size <= 600) && (x - size >= 0) 
     }
 
+    /**
+     * Function determines if the ball is within the boundaries of the top canvas walls 
+     * @param s takes in the game state object
+     */
     function collideY(s: Game) { 
       //function returns true if its in the canvas
       let size = 10; 
@@ -256,32 +284,64 @@ function pong() {
       return ((y + size <= 600) && (y - size >= -5))
     }
 
+    /**
+     * Function sets up up the view when the game first executes
+     * @param game takes in the game state object
+     */
     function initView(game: Game) { 
       const ball = game.ball; 
       const canvas = game.canvas;
       canvas.appendChild(ball.object);
     }
 
+    /**
+     * This function checks if there has been a collision between the ball and a paddle
+     * @param s game state
+     */
     function collidePaddle(s: Game){
-      let x = s.ball.cx
-      let y = s.ball.cy
+      let cx = s.ball.cx
+      let cy = s.ball.cy
       let ballSize = s.ball.r
-      let rightY = s.paddle2.y
-      let rightX = s.paddle2.x
-      let leftX = s.paddle1.x
-      let leftY = s.paddle1.y
+      let rightPaddleY = s.paddle2.y
+      let rightPaddleX = s.paddle2.x
+      let leftPaddleX = s.paddle1.x
+      let leftPaddleY = s.paddle1.y
       let paddleHeight = s.paddle1.height
 
-      return ((Math.abs(x + ballSize - rightX) <= 1 && y >= rightY && y <= (rightY + paddleHeight)) || 
-      (Math.abs(x - leftX - ballSize) <= 5 && leftY <= y && y <= (leftY + paddleHeight))) ? true : false
+      return ((Math.abs(cx + ballSize - rightPaddleX) <= 1 && cy >= rightPaddleY && cy <= (rightPaddleY + paddleHeight)) || 
+      (Math.abs(cx - leftPaddleX - ballSize) <= 5 && leftPaddleY <= cy && cy <= (leftPaddleY + paddleHeight))) ? true : false
     }
 
+    /**
+     * This function checks the score of the game 
+     * @param s game state
+     */
     function checkScore(s: Game){
       return s.score1 == s.maxScore || s.score2 == s.maxScore
     }
 
+    /**
+     * This function handles the game ending 
+     */
     function endGame(s: Game){ 
+      const canvas = document.getElementById("canvas");
+      const v = document.createElementNS(s.canvas.namespaceURI, "text");
 
+      if (s.score2 == s.maxScore) { 
+        v.innerHTML = String("Player 2 Wins")
+        document.getElementById('rightS').setAttributeNS(null, "fill", "yellow")
+      }
+      else { 
+        v.innerHTML = String("Player 1 Wins")
+        document.getElementById('rightS').setAttributeNS(null, "fill", "yellow")
+      }
+
+      v.setAttributeNS(null, "x", "150")
+      v.setAttributeNS(null, "y", "300")
+      v.setAttributeNS(null, "fill", "white");
+      v.setAttributeNS(null, "font-size", "50")
+      canvas.appendChild(v)
+      gameTime.unsubscribe();
     }
 
 initView(initalGameState)
