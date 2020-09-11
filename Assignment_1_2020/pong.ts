@@ -1,7 +1,7 @@
 import { fromEvent,interval, Observable, never} from 'rxjs'; 
 import { map,filter,merge,scan, flatMap, takeUntil, take, reduce } from 'rxjs/operators';
 
-class GameOver { constructor(public readonly elapsed:number, public vector: Vec) {} }
+class GameOver { constructor(public readonly elapsed:number) {} }
 class MovePaddle { constructor(public vector: Vec) {}}
 class MoveBall { constructor(public vector: Vec) {}}
 
@@ -55,7 +55,6 @@ function pong() {
       paddle2: Paddle; 
       ball: Ball; 
       canvas: Element; 
-      gameOver: Boolean; 
     }>
     /**
      * Generates either a -1 or 1 
@@ -73,8 +72,7 @@ function pong() {
       paddle1: {x: 10, y: 230, height: 120, object: document.getElementById("paddle1")},
       paddle2: {x: 580, y: 230, height: 120, object: document.getElementById("paddle2")},
       ball: {cx: 300, cy: Number(String(Math.random() * 500 + 50)), r: 5, fill: "red", xVelo: new Vec(randomNum(),0), yVelo: new Vec(0, randomNum()), object: createBall()},
-      canvas: document.getElementById("canvas"),
-      gameOver: false
+      canvas: document.getElementById("canvas")
     }
     /**
      * Creates a svg ball element 
@@ -91,168 +89,183 @@ function pong() {
       return ball; 
     }
 
-    /**
-     * Updates the state of objects based on the event that has occured
-     * @param s state of the game
-     * @param e the event that has occured, represented by a class 
+    /***
+     * Handles collisions between the paddle and the ball  
      */
-    function reduceState(s: Game, e: MovePaddle | MoveBall): Game {
-
-      if (checkScore(s)){
-        endGame(s) 
-      }
-
-      /* Responsible for moving the left paddle */
-      if (e instanceof MovePaddle) {
-        if (e.vector.y > 0) { 
-          if ((s.paddle1.y + e.vector.y <= 475)){ 
-            return { ...s, paddle1: { 
-              x: s.paddle1.x,
-              y: s.paddle1.y + e.vector.y, 
-              height: 120, 
-              object: document.getElementById('paddle1')
-              } 
-            }
-        }
-        else {return s}
-      }
-      else { 
-        if ((s.paddle1.y - e.vector.y >= 10)){
-          return { ...s, paddle1: { 
+    function movePaddle(s: Game, e: MovePaddle): Game {
+      return (e.vector.y > 0) ?  
+        (s.paddle1.y + e.vector.y <= 475) ? 
+            { ...s, paddle1: { 
             x: s.paddle1.x,
             y: s.paddle1.y + e.vector.y, 
-            height: 120, 
-            object: document.getElementById('paddle1')
+            height: s.paddle1.height, 
+            object: s.paddle1.object
             } 
           }
+      : {...s}
+    :
+    (s.paddle1.y - e.vector.y >= 10) ?
+        { ...s, paddle1: { 
+          x: s.paddle1.x,
+          y: s.paddle1.y + e.vector.y, 
+          height: s.paddle1.height, 
+          object: s.paddle1.object
+          } 
         }
-      else {return s} 
-      }}
+      : {...s}
+    }
 
-    /* Checks if there has been a collision between the ball and paddle */
-    if (collidePaddle(s)) {
+    /***
+     * Handles collisions from the top wall
+     */
+    const collideTop = (s: Game): Game => {
+      return { ...s, ball: { 
+        cy: s.ball.cy + s.ball.yVelo.y * -1,
+        cx: s.ball.cx + s.ball.xVelo.x,
+        r: s.ball.r,
+        fill: "red", 
+        xVelo: s.ball.xVelo, 
+        yVelo: s.ball.yVelo.flipY(), 
+        object: s.ball.object
+        }
+      }
+    }
+
+    const paddleCollide = (s: Game): Game => { 
       //if ball collides with the bottom of the paddle 
-      if (s.ball.cy > s.paddle1.y + s.paddle1.height/2 || s.ball.cy > s.paddle2.y + s.paddle1.height/2){
-        return { ...s, ball: { 
+      return (s.ball.cy > s.paddle1.y + s.paddle1.height/2 || s.ball.cy > s.paddle2.y + s.paddle1.height/2) ?
+        { ...s, ball: { 
           cy: s.ball.cy + s.ball.yVelo.y,
           cx: s.ball.cx + s.ball.xVelo.x * -1,
-          r: 5,
+          r: s.ball.r,
           fill: "red", 
           xVelo: s.ball.xVelo.flipX(), 
           yVelo: new Vec(0, 2), 
-          object: document.getElementById('ball')
+          object: s.ball.object
           }
         }
-      }
-      else { 
+      : 
         //if ball collides with the top of the paddle 
-        return { ...s, ball: { 
+         { ...s, ball: { 
           cy: s.ball.cy + s.ball.yVelo.y,
           cx: s.ball.cx + s.ball.xVelo.x * -1,
           r: 5,
           fill: "red", 
           xVelo: s.ball.xVelo.flipX(), 
           yVelo: new Vec(0, -5), 
-          object: document.getElementById('ball')
+          object: s.ball.object
           }
         }
-      }
     }
 
-    /* Is responsible for moving the ball */
-    if (e instanceof MoveBall) {
-        return { ...s, ball: { 
-          cy: s.ball.cy + s.ball.yVelo.y,
-          cx: s.ball.cx + s.ball.xVelo.x,
-          r: 5,
-          fill: "red", 
-          xVelo: s.ball.xVelo, 
-          yVelo: s.ball.yVelo, 
-          object: document.getElementById('ball')
-          }
-        } 
-      }
-
-      //check for collisons top walls
-      if (!collideY(s)) {
-        return { ...s, ball: { 
-          cy: s.ball.cy + s.ball.yVelo.y * -1,
-          cx: s.ball.cx + s.ball.xVelo.x,
-          r: 5,
-          fill: "red", 
-          xVelo: s.ball.xVelo, 
-          yVelo: s.ball.yVelo.flipY(), 
-          object: document.getElementById('ball')
-          }
-        }
-      }
-
-      //collisions on the side walls
-      if (!collideX(s)) { 
-        //check if the game is still running, if not then run the end game function
-        //checks if its left side's point
-        if (s.ball.cx <= 300) {
-          return { 
-            score1: s.score1,
-            score2: s.score2 + 1, 
-            maxScore: s.maxScore, 
-            paddle1: s.paddle1,
-            paddle2: s.paddle2,
-            ball: {cx: 300, cy: Math.random() * 500 + 50, r: 5, fill: "red", xVelo: new Vec(randomNum(),0), yVelo: new Vec(0, randomNum()), object: s.ball.object},
-            canvas: document.getElementById("canvas"),
-            gameOver: false
-          }
-        }
-        //otherwise it is right side's point
-        else {
-          return { 
-            score1: s.score1 + 1,
-            score2: s.score2,
-            maxScore: s.maxScore, 
-            paddle1: s.paddle1,
-            paddle2: s.paddle2,
-            ball: {cx: 300, cy: Math.random() * 500 + 50, r: 5, fill: "red", xVelo: new Vec(randomNum(),0), yVelo: new Vec(0, randomNum()), object: s.ball.object},
-            canvas: document.getElementById("canvas"),
-            gameOver: false
-          }
-          }
-        }
-     
-      if (s.ball.cx > 300) {
+    /***
+     * Controls the computer controlled paddle
+     */
+    const computerPaddle = (s: Game): Game => { 
+      //if the ball is on the computers side
+      return (s.ball.cx > 300) ?
         //if the ball is above the ball 
-        if (s.ball.cy + s.ball.r * 2 < s.paddle2.y + s.paddle2.height/2) { 
+        (s.ball.cy + s.ball.r * 2 < s.paddle2.y + s.paddle2.height/2) ? 
           //if the paddle is within the board parameters 
-            if ((s.paddle2.y - 3 >= 10)) {
-                return { ...s, paddle2: { 
+            (s.paddle2.y - 3 >= 10) ?
+                { ...s, paddle2: { 
                   x: s.paddle2.x,
                   y: s.paddle2.y - 3, 
-                  height: 120, 
-                  object: document.getElementById('paddle2')
-                  }}}
-            else {return s}
-                }
+                  height: s.paddle2.height, 
+                  object: s.paddle2.object
+                  }}
+            : {...s}
                 
         //if the ball is below the ball 
-        else { 
           //if the paddle is within the board parameters 
-          if ((s.paddle2.y + 3 <= 475)) {
-            return { ...s, paddle2: { 
+          : (s.paddle2.y + 3 <= 475) ?
+            { ...s, paddle2: { 
               x: s.paddle2.x,
               y: s.paddle2.y + 3, 
-              height: 120, 
-              object: document.getElementById('paddle2')
-              }}}
-          else {
-            return s
-          }}
-        } 
-      return s
+              height: s.paddle2.height, 
+              object: s.paddle2.object
+              }}
+          : {...s}
+        : {...s}
+      
+    }
+    
+    /***
+     * Handles collisions with the side walls and updates score accordingly
+     */
+    const collideSides = (s:Game): Game => {
+      //check if it hit the left wall
+      return (s.ball.cx <= 300) ?
+         { 
+          score1: s.score1,
+          score2: s.score2 + 1, 
+          maxScore: s.maxScore, 
+          paddle1: s.paddle1,
+          paddle2: s.paddle2,
+          ball: {cx: 300, cy: Math.random() * 500 + 50, r: s.ball.r, fill: s.ball.fill, xVelo: new Vec(randomNum(),0), yVelo: new Vec(0, randomNum()), object: s.ball.object},
+          canvas: s.canvas,
+        }
+        :
+      //otherwise it is right side's point
+        { 
+          score1: s.score1 + 1,
+          score2: s.score2,
+          maxScore: s.maxScore, 
+          paddle1: s.paddle1,
+          paddle2: s.paddle2,
+          ball: {cx: 300, cy: Math.random() * 500 + 50, r: s.ball.r, fill: s.ball.fill, xVelo: new Vec(randomNum(),0), yVelo: new Vec(0, randomNum()), object: s.ball.object},
+          canvas: s.canvas,
+        }
     }
 
     /**
+     * Handles ball movement from events
+     * @param s game state
+     */
+    const ballMovement = (s: Game): Game => { 
+      return { ...s, ball: { 
+        cy: s.ball.cy + s.ball.yVelo.y,
+        cx: s.ball.cx + s.ball.xVelo.x,
+        r: 5,
+        fill: "red", 
+        xVelo: s.ball.xVelo, 
+        yVelo: s.ball.yVelo, 
+        object: s.ball.object
+        }
+      } 
+    }
+
+    /**
+     * Updates the state of objects based on the event that has occured
+     * @param s state of the game
+     * @param e the event that has occured, represented by a class 
+     */
+    const reduceState = (s: Game, e: MovePaddle | MoveBall): Game => {
+    /* Checks if the game has ended */
+    if (checkScore(s)) {endGame(s)}
+
+    /* Responsible for moving the left paddle */
+    if (e instanceof MovePaddle) { return movePaddle(s, e)}
+
+     /* Checks if there has been a collision between the ball and paddle */
+    if (collidePaddle(s)) { return paddleCollide(s)}
+
+    /* Responsible for moving the ball */
+    if (e instanceof MoveBall) { return ballMovement(s)}
+
+    /* Responsible for checking for collisons with the top wall*/
+    if (!collideY(s)) { return collideTop(s)}
+
+    /* Responsible for checking for collisons with the side walls*/
+    if (!collideX(s)) {return collideSides(s)}
+
+    return computerPaddle(s)
+    }
+   
+    /**
      *This function updates the view of the game and is called in the subscribe of the game time observable
      */
-    function updateView(state: Game) { 
+    const updateView = (state: Game) => { 
       //updates the ball and paddle 
       state.ball.object.setAttribute('cx', String(state.ball.xVelo.x + state.ball.cx));
       state.ball.object.setAttribute('cy', String(state.ball.yVelo.y + state.ball.cy));
@@ -279,7 +292,7 @@ function pong() {
         takeUntil(fromEvent<KeyboardEvent>(document, 'keyup').pipe(
           filter(({code})=>code === d.code)
         )),
-        map(result)))),
+    map(result)))),
 
     /*create new observables based on the key pressed which creates new move paddle 
     objects which are used in the reduce state function*/
@@ -298,7 +311,7 @@ function pong() {
      * Function determines if the ball is within the boundaries of the side canvas walls 
      * @param s takes in the game state object
      */
-    function collideX(s: Game): Boolean {  
+    const collideX = (s: Game): Boolean => {  
       return (s.ball.cx + 10 <= 600) && (s.ball.cx - 10 >= 0) 
     }
 
@@ -306,7 +319,7 @@ function pong() {
      * Function determines if the ball is within the boundaries of the top canvas walls 
      * @param s takes in the game state object
      */
-    function collideY(s: Game): Boolean { 
+    const collideY = (s: Game): Boolean => { 
       return ((s.ball.cy + 10 <= 600) && (s.ball.cy - 10 >= -5))
     }
 
@@ -314,7 +327,7 @@ function pong() {
      * Function sets up up the view when the game first executes
      * @param game takes in the game state object
      */
-    function initView(game: Game) { 
+    const initView = (game: Game) => { 
       game.canvas.appendChild(game.ball.object);
     }
 
@@ -322,7 +335,7 @@ function pong() {
      * This function checks if there has been a collision between the ball and a paddle
      * @param s game state
      */
-    function collidePaddle(s: Game){
+    const collidePaddle = (s: Game):Boolean =>{
       let cx = s.ball.cx
       let cy = s.ball.cy
       let ballSize = s.ball.r * 2
@@ -336,19 +349,18 @@ function pong() {
       (Math.abs(cx - leftPaddleX - ballSize) <= 1 && (leftPaddleY - 10) <= cy && cy <= (leftPaddleY + paddleHeight + 10))) ? true : false
     }
 
-
     /**
      * This function checks the score of the game 
      * @param s game state
      */
-    function checkScore(s: Game){
+    const checkScore = (s: Game): Boolean => {
       return s.score1 == s.maxScore || s.score2 == s.maxScore
     }
 
     /**
      * This function handles the game ending 
      */
-    function endGame(s: Game){ 
+    const endGame = (s: Game) => { 
       const canvas = document.getElementById("canvas");
       const v = document.createElementNS(s.canvas.namespaceURI, "text");
 
@@ -361,13 +373,12 @@ function pong() {
         document.getElementById('rightS').setAttributeNS(null, "fill", "yellow")
       }
 
-      v.setAttributeNS(null, "x", "150")
-      v.setAttributeNS(null, "y", "300")
+      v.setAttributeNS(null, "x", "150");
+      v.setAttributeNS(null, "y", "300");
       v.setAttributeNS(null, "fill", "white");
       v.setAttributeNS(null, "font-size", "50"); 
-      canvas.appendChild(v)
+      canvas.appendChild(v);
 
-      pong()
       gameTime.unsubscribe();
     }
 
@@ -377,5 +388,5 @@ initView(initalGameState)
   // the following simply runs your pong function on window load.  Make sure to leave it in place.
   if (typeof window != 'undefined')
     window.onload = ()=>{
-      pong();
-    }
+    pong();
+  }
