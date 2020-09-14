@@ -23,6 +23,7 @@ function pong() {
     // as well as the functionality that you implement.
     // Document your code!  
 
+    
     /**
     * a type Ball 
     */
@@ -88,6 +89,19 @@ function pong() {
       ball.setAttributeNS(null, "id", "ball");
       return ball; 
     }
+
+    /**
+     * Function sets up up the view when the game first executes
+     * @param game takes in the game state object
+     */
+    const initView = (game: Game) => { 
+      document.getElementById("winningMsg").innerHTML = String(" ")
+      document.getElementById('rightS').setAttributeNS(null, "fill", "white")
+      document.getElementById('leftS').setAttributeNS(null, "fill", "white")
+      game.canvas.appendChild(game.ball.object);
+    }
+
+    initView(initalGameState)
 
     /***
      * Handles collisions between the paddle and the ball  
@@ -324,26 +338,18 @@ function pong() {
     }
 
     /**
-     * Function sets up up the view when the game first executes
-     * @param game takes in the game state object
-     */
-    const initView = (game: Game) => { 
-      game.canvas.appendChild(game.ball.object);
-    }
-
-    /**
      * This function checks if there has been a collision between the ball and a paddle
      * @param s game state
      */
     const collidePaddle = (s: Game):Boolean =>{
-      let cx = s.ball.cx
-      let cy = s.ball.cy
-      let ballSize = s.ball.r * 2
-      let rightPaddleY = s.paddle2.y
-      let rightPaddleX = s.paddle2.x
-      let leftPaddleX = s.paddle1.x
-      let leftPaddleY = s.paddle1.y
-      let paddleHeight = s.paddle1.height
+      let cx: number = s.ball.cx
+      let cy: number = s.ball.cy
+      let ballSize: number = s.ball.r * 2
+      let rightPaddleY: number = s.paddle2.y
+      let rightPaddleX: number = s.paddle2.x
+      let leftPaddleX: number = s.paddle1.x
+      let leftPaddleY: number = s.paddle1.y
+      let paddleHeight: number = s.paddle1.height
 
       return ((Math.abs(cx + ballSize - rightPaddleX) <= 1 && cy >= rightPaddleY - 10 && cy <= (rightPaddleY + paddleHeight + 10)) || 
       (Math.abs(cx - leftPaddleX - ballSize) <= 1 && (leftPaddleY - 10) <= cy && cy <= (leftPaddleY + paddleHeight + 10))) ? true : false
@@ -354,35 +360,32 @@ function pong() {
      * @param s game state
      */
     const checkScore = (s: Game): Boolean => {
-      return s.score1 == s.maxScore || s.score2 == s.maxScore
+      return s.score1 == s.maxScore|| s.score2 == s.maxScore
     }
 
     /**
      * This function handles the game ending 
      */
     const endGame = (s: Game) => { 
-      const canvas = document.getElementById("canvas");
-      const v = document.createElementNS(s.canvas.namespaceURI, "text");
+      const canvas: Element = document.getElementById("canvas");
+      let winning: Element = document.getElementById("winningMsg")
 
       if (s.score2 == s.maxScore) { 
-        v.innerHTML = String("Player 2 Wins")
         document.getElementById('rightS').setAttributeNS(null, "fill", "yellow")
+        winning.innerHTML = String("P2 Wins 🥳")
       }
       else { 
-        v.innerHTML = String("Player 1 Wins")
-        document.getElementById('rightS').setAttributeNS(null, "fill", "yellow")
+        document.getElementById('leftS').setAttributeNS(null, "fill", "yellow")
+        winning.innerHTML = String("P1 Wins 🥳")
       }
 
-      v.setAttributeNS(null, "x", "150");
-      v.setAttributeNS(null, "y", "300");
-      v.setAttributeNS(null, "fill", "white");
-      v.setAttributeNS(null, "font-size", "50"); 
-      canvas.appendChild(v);
-
+      canvas.removeChild(s.ball.object);
       gameTime.unsubscribe();
+      setTimeout(()=>pong(), 1000);
+           
     }
 
-initView(initalGameState)
+    
 }
   
   // the following simply runs your pong function on window load.  Make sure to leave it in place.
