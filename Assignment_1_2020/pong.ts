@@ -36,7 +36,12 @@ class RNG {
     return this.nextInt() / (this.m - 1);
   }}
 
-const rng = new RNG(20)
+/**
+ * Constants class 
+ */
+const Constants = new class {
+  readonly rng = new RNG(20);
+};
 
 function pong() {
     // Inside this function you will use the classes and functions 
@@ -86,7 +91,7 @@ function pong() {
      * Generates either a -1 or 1 
      */
     function randomNum(): number { 
-      return rng.nextFloat() < 0.5 ? -3 : 3;
+      return Constants.rng.nextFloat() < 0.5 ? -3 : 3;
     }
     /**
      * Is the object to represent the inital state of the game 
@@ -97,7 +102,7 @@ function pong() {
       maxScore: 8, 
       paddle1: {x: 10, y: 230, height: 120, object: document.getElementById("paddle1")},
       paddle2: {x: 580, y: 230, height: 120, object: document.getElementById("paddle2")},
-      ball: {cx: 300, cy: Number(String(rng.nextFloat() * 500 + 50)), r: 5, fill: "red", xVelo: new Vec(randomNum(),0), yVelo: new Vec(0, randomNum()), object: createBall()},
+      ball: {cx: 300, cy: Number(String(Constants.rng.nextFloat() * 500 + 50)), r: 5, fill: "red", xVelo: new Vec(randomNum(),0), yVelo: new Vec(0, randomNum()), object: createBall()},
       canvas: document.getElementById("canvas"), 
       gameOver: false
     }
@@ -121,6 +126,7 @@ function pong() {
      * @param game takes in the game state object
      */
     const initView = (game: Game) => { 
+      document.getElementById("restartMsg").innerHTML = String(" ")
       document.getElementById("winningMsg").innerHTML = String(" ")
       document.getElementById('rightS').setAttributeNS(null, "fill", "white")
       document.getElementById('leftS').setAttributeNS(null, "fill", "white")
@@ -246,7 +252,7 @@ function pong() {
           maxScore: s.maxScore, 
           paddle1: s.paddle1,
           paddle2: s.paddle2,
-          ball: {cx: 300, cy: rng.nextFloat() * 500 + 50, r: s.ball.r, fill: s.ball.fill, xVelo: new Vec(randomNum(),0), yVelo: new Vec(0, randomNum()), object: s.ball.object},
+          ball: {cx: 300, cy: Constants.rng.nextFloat() * 500 + 50, r: s.ball.r, fill: s.ball.fill, xVelo: new Vec(randomNum(),0), yVelo: new Vec(0, randomNum()), object: s.ball.object},
           canvas: s.canvas,
           gameOver: false
         }
@@ -258,7 +264,7 @@ function pong() {
           maxScore: s.maxScore, 
           paddle1: s.paddle1,
           paddle2: s.paddle2,
-          ball: {cx: 300, cy: rng.nextFloat() * 500 + 50, r: s.ball.r, fill: s.ball.fill, xVelo: new Vec(randomNum(),0), yVelo: new Vec(0, randomNum()), object: s.ball.object},
+          ball: {cx: 300, cy: Constants.rng.nextFloat() * 500 + 50, r: s.ball.r, fill: s.ball.fill, xVelo: new Vec(randomNum(),0), yVelo: new Vec(0, randomNum()), object: s.ball.object},
           canvas: s.canvas,
           gameOver: false
         }
@@ -288,36 +294,39 @@ function pong() {
      */
     const reduceState = (s: Game, e: MovePaddle | MoveBall | EndGame): Game => {
 
-    /* Checks if the game has ended */
-    if (checkScore(s) || e instanceof EndGame) { 
-      return {
-        score1: s.score1,
-        score2: s.score2, 
-        maxScore: s.maxScore, 
-        paddle1: s.paddle1,
-        paddle2: s.paddle2,
-        ball: {cx: 300, cy: rng.nextFloat() * 500 + 50, r: s.ball.r, fill: s.ball.fill, xVelo: new Vec(randomNum(),0), yVelo: new Vec(0, randomNum()), object: s.ball.object},
-        canvas: s.canvas,
-        gameOver: true 
+      /* checks if the game flag is true and that the user has clicked the restart button */
+      if (s.gameOver && e instanceof EndGame) { setTimeout(()=> initView(s),10); return initalGameState }
+     
+      /* Checks if the game has ended and if so, sets the flag to true*/
+      if (checkScore(s)) { 
+        return {
+          score1: s.score1,
+          score2: s.score2, 
+          maxScore: s.maxScore, 
+          paddle1: s.paddle1,
+          paddle2: s.paddle2,
+          ball: {cx: 300, cy: Constants.rng.nextFloat() * 500 + 50, r: s.ball.r, fill: s.ball.fill, xVelo: new Vec(randomNum(),0), yVelo: new Vec(0, randomNum()), object: s.ball.object},
+          canvas: s.canvas,
+          gameOver: true 
+        }
       }
-    }
 
-    /* Responsible for moving the left paddle */
-    if (e instanceof MovePaddle) { return movePaddle(s, e)}
+      /* Responsible for moving the left paddle */
+      if (e instanceof MovePaddle) { return movePaddle(s, e)}
 
-     /* Checks if there has been a collision between the ball and paddle */
-    if (collidePaddle(s)) { return paddleCollide(s)}
+      /* Checks if there has been a collision between the ball and paddle */
+      if (collidePaddle(s)) { return paddleCollide(s)}
 
-    /* Responsible for moving the ball */
-    if (e instanceof MoveBall) { return ballMovement(s)}
+      /* Responsible for moving the ball */
+      if (e instanceof MoveBall) { return ballMovement(s)}
 
-    /* Responsible for checking for collisons with the top wall*/
-    if (!collideY(s)) { return collideTop(s)}
+      /* Responsible for checking for collisons with the top wall*/
+      if (!collideY(s)) { return collideTop(s)}
 
-    /* Responsible for checking for collisons with the side walls*/
-    if (!collideX(s)) {return collideSides(s)}
+      /* Responsible for checking for collisons with the side walls*/
+      if (!collideX(s)) {return collideSides(s)}
 
-    return computerPaddle(s)
+      return computerPaddle(s)
 
     }
    
@@ -337,25 +346,23 @@ function pong() {
       score1.innerHTML = String(state.score1)
       score2.innerHTML = String(state.score2)
 
-      if (state.gameOver){
-        const canvas = document.getElementById("canvas");
+      //this accounts for if the flag in the game state is true
+      if (state.gameOver) {
         const winning: Element = document.getElementById("winningMsg")
+        const restart: Element = document.getElementById("restartMsg")
 
         if (state.score2 > state.score1) { 
           document.getElementById('rightS').setAttributeNS(null, "fill", "yellow")
           winning.innerHTML = String("P2 Wins 🥳")
         }
-        else if (state.score2 < state.score1) { 
+        else { 
           document.getElementById('leftS').setAttributeNS(null, "fill", "yellow")
           winning.innerHTML = String("P1 Wins 🥳")
         }    
-        else {
-          winning.innerHTML = String("Restarted")
-        }
-
-        canvas.removeChild(state.ball.object);
-        gameTime.unsubscribe();
-        setTimeout(()=> pong(),1000);   
+        
+        state.ball.object.setAttributeNS(null, 'cx', "900");
+        state.ball.object.setAttributeNS(null, 'cy', "900");
+        restart.innerHTML = String("press r to restart");   
       }
     }
 
@@ -380,12 +387,12 @@ function pong() {
     downEvent = keyObservable('keydown','ArrowDown', () => new MovePaddle(new Vec(0,3)))
    
      /* this is the observable for tracking the ball */
-     const ballObservable = interval(10).pipe(map(_ => new MoveBall(new Vec(1,-1))))
+    const ballObservable = interval(10).pipe(map(_ => new MoveBall(new Vec(1,-1))))
 
     /* this is a seperate observable for resetting the game the game */
-     const restart = fromEvent<KeyboardEvent>(document, "keydown").pipe(
-      filter((input) => input.key === 'r'),
-      map(_ => new EndGame()))
+    const restart = fromEvent<KeyboardEvent>(document, "keydown").pipe(
+    filter((input) => input.key === 'r'),
+    map(_ => new EndGame()))
 
     /* this is the main observable for the game */
     const gameTime = interval(10).pipe(
