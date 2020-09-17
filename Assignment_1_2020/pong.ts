@@ -1,12 +1,12 @@
 import { fromEvent,interval, Observable, never} from 'rxjs'; 
-import { map,filter,merge,scan, flatMap, takeUntil, take, reduce } from 'rxjs/operators';
+import { map,filter,merge,scan, flatMap, takeUntil} from 'rxjs/operators';
 
 class MovePaddle { constructor(public vector: Vec) {}}
 class MoveBall { constructor(public vector: Vec) {}}
 class EndGame{}
 
 /**
- * 
+ * Vector class for calculating ball movement
  */
 class Vec {
   constructor(public readonly x: number = 0, public readonly y: number = 0) {}
@@ -37,7 +37,7 @@ class RNG {
   }}
 
 /**
- * Constants class 
+ * Constants class for global variables 
  */
 const Constants = new class {
   readonly rng = new RNG(20);
@@ -65,6 +65,7 @@ function pong() {
       yVelo: Vec;
       object: Element; 
     }>
+
      /**
     * a type Paddle 
     */
@@ -74,6 +75,7 @@ function pong() {
       height: number;
       object: Element; 
     }>
+
    /**
     * a type Game 
     */
@@ -87,12 +89,15 @@ function pong() {
       canvas: Element; 
       gameOver: boolean;
     }>
+
     /**
-     * Generates either a -1 or 1 
+     * Generates either a -1 or 1 using the RNG class
      */
     function randomNum(): number { 
+      console.log(Constants.rng.nextFloat(), Constants.rng.nextFloat() < 0.5 ? -3 : 3 )
       return Constants.rng.nextFloat() < 0.5 ? -3 : 3;
     }
+
     /**
      * Is the object to represent the inital state of the game 
      */
@@ -106,8 +111,9 @@ function pong() {
       canvas: document.getElementById("canvas"), 
       gameOver: false
     }
+
     /**
-     * Creates a svg ball element 
+     * Creates a svg ball element, sets its properties and adds it to the canvas
      */
     function createBall(): Element {
       const canvas = document.getElementById("canvas");
@@ -118,25 +124,14 @@ function pong() {
       ball.setAttribute("r", "5");
       ball.setAttributeNS(null, "fill", "yellow");
       ball.setAttributeNS(null, "id", "ball");
+      canvas.appendChild(ball);
       return ball; 
     }
 
-    /**
-     * Function sets up up the view when the game first executes
-     * @param game takes in the game state object
-     */
-    const initView = (game: Game) => { 
-      document.getElementById("restartMsg").innerHTML = String(" ")
-      document.getElementById("winningMsg").innerHTML = String(" ")
-      document.getElementById('rightS').setAttributeNS(null, "fill", "white")
-      document.getElementById('leftS').setAttributeNS(null, "fill", "white")
-      game.canvas.appendChild(game.ball.object);
-    }
-
-    initView(initalGameState)
-
     /***
      * Handles collisions between the paddle and the ball  
+     * @param s game state
+     * @param e event that has occured
      */
     function movePaddle(s: Game, e: MovePaddle): Game {
       return (e.vector.y > 0) ?  
@@ -161,9 +156,10 @@ function pong() {
       : {...s}
     }
 
-    /***
-     * Handles collisions from the top wall
-     */
+   /**
+    * Handles collisions from the top wall and returns a game object 
+    * @param s current state of the game
+    */
     const collideTop = (s: Game): Game => {
       return { ...s, ball: { 
         cy: s.ball.cy + s.ball.yVelo.y * -1,
@@ -208,9 +204,10 @@ function pong() {
         }
     }
 
-    /***
-     * Controls the computer controlled paddle
-     */
+   /**
+    * Controls the computer controlled paddle
+    * @param s current state of the game
+    */
     const computerPaddle = (s: Game): Game => { 
       //if the ball is on the computers side
       return (s.ball.cx > 300) ?
@@ -240,8 +237,9 @@ function pong() {
       
     }
     
-    /***
+    /**
      * Handles collisions with the side walls and updates score accordingly
+     * @param s game state
      */
     const collideSides = (s:Game): Game => {
       //check if it hit the left wall
@@ -289,15 +287,26 @@ function pong() {
 
     /**
      * Updates the state of objects based on the event that has occured
+     * This allows for encapsulation of all the possible transformations of state in a function
      * @param s state of the game
      * @param e the event that has occured, represented by a class 
      */
     const reduceState = (s: Game, e: MovePaddle | MoveBall | EndGame): Game => {
-
       /* checks if the game flag is true and that the user has clicked the restart button */
-      if (s.gameOver && e instanceof EndGame) { setTimeout(()=> initView(s),10); return initalGameState }
+      if (s.gameOver && e instanceof EndGame) { 
+        return { 
+        score1: 0,
+        score2: 0,
+        maxScore: 8, 
+        paddle1: {x: 10, y: 230, height: 120, object: document.getElementById("paddle1")},
+        paddle2: {x: 580, y: 230, height: 120, object: document.getElementById("paddle2")},
+        ball: {cx: 300, cy: Number(String(Constants.rng.nextFloat() * 500 + 50)), r: 5, fill: "red", xVelo: new Vec(randomNum(),0), yVelo: new Vec(0, randomNum()), object: createBall()},
+        canvas: document.getElementById("canvas"), 
+        gameOver: false
+      }
+    }
      
-      /* Checks if the game has ended and if so, sets the flag to true*/
+      /* Checks if the game has ended and if so, sets the gameOver flag to true*/
       if (checkScore(s)) { 
         return {
           score1: s.score1,
@@ -331,9 +340,17 @@ function pong() {
     }
    
     /**
-     *This function updates the view of the game and is called in the subscribe of the game time observable
+     *This function renders the view of the game and is called in the subscribe of the game time observable
+     * handles impure changes to the SVG elements
+     * @param state game state
      */
     const updateView = (state: Game) => { 
+      //initalising the view 
+      document.getElementById("restartMsg").innerHTML = String(" ")
+      document.getElementById("winningMsg").innerHTML = String(" ")
+      document.getElementById('rightS').setAttributeNS(null, "fill", "white")
+      document.getElementById('leftS').setAttributeNS(null, "fill", "white")
+
       //updates the ball and paddle 
       state.ball.object.setAttribute('cx', String(state.ball.xVelo.x + state.ball.cx));
       state.ball.object.setAttribute('cy', String(state.ball.yVelo.y + state.ball.cy));
@@ -341,10 +358,8 @@ function pong() {
       state.paddle2.object.setAttribute('y', String(state.paddle2.y));
       
       //updates the score of the game 
-      const score1 = document.getElementById("leftS")
-      const score2 = document.getElementById("rightS")
-      score1.innerHTML = String(state.score1)
-      score2.innerHTML = String(state.score2)
+      document.getElementById("leftS").innerHTML = String(state.score1)
+      document.getElementById("rightS").innerHTML = String(state.score2)
 
       //this accounts for if the flag in the game state is true
       if (state.gameOver) {
@@ -360,16 +375,16 @@ function pong() {
           winning.innerHTML = String("P1 Wins 🥳")
         }    
         
-        state.ball.object.setAttributeNS(null, 'cx', "900");
-        state.ball.object.setAttributeNS(null, 'cy', "900");
+        state.ball.object.setAttributeNS(null, 'cx', "700");
+        state.ball.object.setAttributeNS(null, 'cy', "700");
         restart.innerHTML = String("press r to restart");   
       }
     }
 
-    type Key = 'ArrowUp' | 'ArrowDown' | 'r'
+    type Key = 'ArrowUp' | 'ArrowDown' 
     type Event = 'keydown' | 'keyup'
 
-    // observable for the movement of paddle 1 using the up and down arrow keys 
+    // observable stream for the movement of paddle 1 using the up and down arrow keys 
     const keyObservable = <T>(e:Event, k:Key, result:()=>T)=>
     fromEvent<KeyboardEvent>(document, e)
     .pipe(
@@ -381,26 +396,27 @@ function pong() {
         )),
     map(result)))),
 
-    /*create new observables based on the key pressed which creates new move paddle 
+    /*create new observable streams based on the key pressed which creates new move paddle 
     objects which are used in the reduce state function*/
     upEvent = keyObservable('keydown','ArrowUp', () => new MovePaddle(new Vec(0,-3))),
     downEvent = keyObservable('keydown','ArrowDown', () => new MovePaddle(new Vec(0,3)))
    
-     /* this is the observable for tracking the ball */
+     /* this is the observable stream for tracking the ball */
     const ballObservable = interval(10).pipe(map(_ => new MoveBall(new Vec(1,-1))))
 
-    /* this is a seperate observable for resetting the game the game */
+    /* this is a seperate observable for detecting the key press 'r' for resetting the game the game */
     const restart = fromEvent<KeyboardEvent>(document, "keydown").pipe(
     filter((input) => input.key === 'r'),
     map(_ => new EndGame()))
 
-    /* this is the main observable for the game */
-    const gameTime = interval(10).pipe(
-      merge(upEvent, downEvent, ballObservable, restart),
-      scan(reduceState, initalGameState)).subscribe(updateView);
+    /* this is the main observable for the game which merges
+    all the existing observable steams into one and transduces the state of the game -> then updates the game*/
+    interval(10).pipe(merge(upEvent, downEvent, ballObservable, restart),
+    scan(reduceState, initalGameState)).subscribe(updateView);
 
     /**
-     * Function determines if the ball is within the boundaries of the side canvas walls 
+     * Function determines if the ball is within the boundaries of the side canvas walls.s
+     * Returns true if the ball is within the side walls of the canvas
      * @param s takes in the game state object
      */
     const collideX = (s: Game): Boolean => {  
@@ -419,26 +435,17 @@ function pong() {
      * This function checks if there has been a collision between the ball and a paddle
      * @param s game state
      */
-    const collidePaddle = (s: Game):Boolean =>{
-      const cx: number = s.ball.cx
-      const cy: number = s.ball.cy
-      const ballSize: number = s.ball.r * 2
-      const rightPaddleY: number = s.paddle2.y
-      const rightPaddleX: number = s.paddle2.x
-      const leftPaddleX: number = s.paddle1.x
-      const leftPaddleY: number = s.paddle1.y
-      const paddleHeight: number = s.paddle1.height
-
-      return ((Math.abs(cx + ballSize - rightPaddleX) <= 1 && cy >= rightPaddleY - 10 && cy <= (rightPaddleY + paddleHeight + 10)) || 
-      (Math.abs(cx - leftPaddleX - ballSize) <= 1 && (leftPaddleY - 10) <= cy && cy <= (leftPaddleY + paddleHeight + 10))) ? true : false
+    const collidePaddle = (s: Game): Boolean =>{
+      return ((Math.abs(s.ball.cx + s.ball.r * 2 - s.paddle2.x) <= 1 && s.ball.cy >= s.paddle2.y - 10 && s.ball.cy <= (s.paddle2.y + s.paddle1.height + 10)) || 
+      (Math.abs(s.ball.cx - s.paddle1.x - s.ball.r * 2) <= 1 && (s.paddle1.y - 10) <= s.ball.cy && s.ball.cy <= (s.paddle1.y + s.paddle1.height + 10))) ? true : false
     }
 
     /**
-     * This function checks the score of the game 
-     * @param s game state
+     * This function checks the score of the game and returns a boolean if one player has reached max score
+     * @param s game state 
      */
     const checkScore = (s: Game): Boolean => {
-      return s.score1 == s.maxScore|| s.score2 == 1
+      return s.score1 == s.maxScore|| s.score2 == s.maxScore
     }    
 }
   

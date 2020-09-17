@@ -16,20 +16,26 @@
         <h1>Pong 🏓</h1>
         
         <svg id="canvas" width="600" height="600">
-            #making the left paddle 
+            <!--making the left paddle -->
             <rect id = "paddle1" x = "10" y = "230" width="10" height="120" style="fill:rgb(255, 116, 213)"/>
-            #making the right paddle 
+            <!--making the right paddle -->
             <rect id = "paddle2" x = "580" y = "230" width="10" height="120" style="fill:rgb(115, 234, 255)"/>
-            </g>
-            <line x1="300" y1="1" x2="300" y2="600" style="stroke:rgb(255, 255, 255);stroke-width:2" stroke-dasharray = "10 10 10"/>
+            <!--adding the line down the middle-->
+            <line x1="300" y1="1" x2="300" y2="600" style="stroke:rgb(211, 210, 210);stroke-width:2" stroke-dasharray = "10 10 10"/>
+            <!--right score-->
             <text id="leftS" x=150 y=200 fill="white" font-size= "90px">0</text>
+            <!--left score-->
             <text id="rightS" x=450 y=200 fill="white" font-size= "90px">0</text>
-            <text id="winningMsg" x=150 y=320 fill="white" class="winning" font-size= "60px"> </text>
+            <!--winning message-->
+            <text id="winningMsg" x=150 y=320 fill="white" font-size= "60px"> </text>
+            <!--restart message-->
+            <text id="restartMsg" x=180 y=380 fill="rgb(0, 255, 170)" font-size= "30px"> </text>
         </svg>
         
         <h2>Instructions 🌟</h2> 
         <p>Player is the left paddle. Use the up and down arrow keys to move the paddle</p>
         <p>First player to score 8 points wins the game!</p>
+        <p>Press the r key to restart the game!</p>
         <p>Have Fun 🥳🥳🥳</p>
         
     </body>
