@@ -381,7 +381,7 @@ function pong() {
       }
     }
 
-    type Key = 'ArrowUp' | 'ArrowDown' 
+    type Key = 'ArrowUp' | 'ArrowDown' | 'KeyR'
     type Event = 'keydown' | 'keyup'
 
     // observable stream for the movement of paddle 1 using the up and down arrow keys 
@@ -399,15 +399,11 @@ function pong() {
     /*create new observable streams based on the key pressed which creates new move paddle 
     objects which are used in the reduce state function*/
     upEvent = keyObservable('keydown','ArrowUp', () => new MovePaddle(new Vec(0,-3))),
-    downEvent = keyObservable('keydown','ArrowDown', () => new MovePaddle(new Vec(0,3)))
+    downEvent = keyObservable('keydown','ArrowDown', () => new MovePaddle(new Vec(0,3))),
+    restart = keyObservable('keydown','KeyR', () => new EndGame())
    
      /* this is the observable stream for tracking the ball */
     const ballObservable = interval(10).pipe(map(_ => new MoveBall(new Vec(1,-1))))
-
-    /* this is a seperate observable for detecting the key press 'r' for resetting the game the game */
-    const restart = fromEvent<KeyboardEvent>(document, "keydown").pipe(
-    filter((input) => input.key === 'r'),
-    map(_ => new EndGame()))
 
     /* this is the main observable for the game which merges
     all the existing observable steams into one and transduces the state of the game -> then updates the game*/
